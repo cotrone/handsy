@@ -47,6 +47,12 @@ data CommandOptions =
 instance Default CommandOptions where
   def = CommandOptions "" ""
 
+left :: String -> Script a
+left = ExceptT . return . Left
+
+right :: a -> Script a
+right = ExceptT . return . Right
+
 -- | Reads a file and returns the contents of the file.
 readFile :: FilePath -> Handsy BL.ByteString
 readFile fp = command "cat" [fp] def >>= \case

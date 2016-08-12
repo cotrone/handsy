@@ -20,6 +20,7 @@ type StdErr = B.ByteString
 
 data HandsyInstruction a where
  Shell :: String -> B.ByteString -> HandsyInstruction (ExitCode, StdOut, StdErr)
+ ShellStream :: String -> B.ByteString -> HandsyInstruction ()
 
 type Handsy a = ProgramT HandsyInstruction Script a
 
@@ -39,11 +40,11 @@ interpret :: forall r . forall a
           -> (r -> String -> B.ByteString -> Script (ExitCode, B.ByteString, B.ByteString))
           -> Options
           -> Handsy a
-          -> EitherT String IO a
+          -> ExceptT String IO a
 interpret acquire destroy f opts handsy = bracket acquire destroy (`go` handsy)
   where go :: r -> Handsy a -> Script a
         go res h = viewT h >>= \case
-          Return x                   -> right x
+          Return x                   -> return x
           Shell cmdline stdin :>>= k -> when (debug opts) (liftIO $ hPutStrLn stderr cmdline)
                                         >> f res cmdline stdin >>= go res . k
 
@@ -57,4 +58,14 @@ handsyIO :: IO a -> Handsy a
 handsyIO = lift . scriptIO
 
 handsyLeft :: String -> Handsy a
-handsyLeft = lift . left
+handsyLeft s = lift (ExceptT $ return $ Left s)
+
+
+
+
+
+
+
+
+
+

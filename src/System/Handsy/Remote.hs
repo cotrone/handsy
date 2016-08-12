@@ -47,7 +47,7 @@ instance Default SSHOptions where
 
 acquireCM :: Host -> SSHOptions -> Script FilePath
 acquireCM host opts = do
-  cm <- scriptIO (run def $ head . strLines . fst <$> command_ "mktemp" ["-u", "--suffix=.handsy"] def) >>= hoistEither
+  cm <- scriptIO (run def $ head . strLines . fst <$> command_ "mktemp" ["-u"] def) >>= hoistEither
 
   let (ssh, params) = genSsh opts (Just cm)
   _ <- scriptIO . forkIO . void . run def . void $ command_ ssh (params ++ ["-M", "-N", host]) def
@@ -61,7 +61,8 @@ acquireCM host opts = do
       command (sshPath opts) args def >>= return . \case
         (ExitSuccess, _, _) -> True
         _                   -> False
-    waitForCM p = retrying (limitRetries 30) (\_ n -> return (not n)) (checkCM p)
+    waitForCM :: FilePath -> IO Bool
+    waitForCM p = retrying (limitRetries 30) (\_ n -> return (not n)) (const $ checkCM p)
 
 
 releaseCM :: FilePath -> Script ()
@@ -84,7 +85,7 @@ runSsh host opts cm cmdline stdin' =
 
 -- | Executes the actions at a remote host
 runRemote :: Options -> Host -> SSHOptions -> Handsy a -> IO (Either String a)
-runRemote opts host sshOpts = runEitherT .
+runRemote opts host sshOpts = runExceptT .
   case controlMaster sshOpts of
     False -> interpretSimple (runSsh host sshOpts Nothing) opts
     True -> interpret (acquireCM host sshOpts)

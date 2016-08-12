@@ -9,4 +9,4 @@ runS opts = interpretSimple (\cmdline -> scriptIO . readProcessWithExitCode "bas
 
 -- | Executes the actions locally
 run :: Options -> Handsy a -> IO (Either String a)
-run opts = runEitherT . runS opts
+run opts = runExceptT . runS opts
